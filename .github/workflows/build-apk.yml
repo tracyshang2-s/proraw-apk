@@ -1,0 +1,52 @@
+name: Auto Build Android APK
+
+# 触发条件：每次修改文件 或 手动点击按钮时自动打包
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 拉取您上传的网页代码
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. 云端自动配置 Node.js 环境
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. 云端自动配置 Java 21 环境 (Capacitor 最新安卓编译要求)
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      # 4. 自动执行 Capacitor 初始化与安卓工程转换
+      - name: Initialize Capacitor & Add Android
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "ProRaw Studio" "com.proraw.studio" --web-dir=www
+          npx cap add android
+          npx cap copy
+
+      # 5. 使用 Gradle 编译生成手机可安装的 APK
+      - name: Build Debug APK
+        working-directory: ./android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      # 6. 将生成的 APK 打包上传到 GitHub 页面供您点击下载
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProRaw-Studio-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
